@@ -2,16 +2,19 @@
 import React, { useState } from 'react';
 import Header from '@/components/Header';
 import PhishingAnalyzer from '@/components/PhishingAnalyzer';
-import ResultsDisplay from '@/components/ResultsDisplay';
 import EducationalPanel from '@/components/EducationalPanel';
 import SampleData from '@/components/SampleData';
+import PhishingFlowchart from '@/components/PhishingFlowchart';
 import { Shield, Code, Database, AtomIcon } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Index = () => {
   const [inputText, setInputText] = useState('');
+  const [activeTab, setActiveTab] = useState('analyzer');
   
   const handleSampleSelect = (text: string) => {
     setInputText(text);
+    setActiveTab('analyzer'); // Switch to analyzer tab when sample is selected
   };
 
   return (
@@ -47,16 +50,27 @@ const Index = () => {
           </div>
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <PhishingAnalyzer key={inputText} />
-            <EducationalPanel />
-          </div>
-          
-          <div>
-            <SampleData onSelectSample={handleSampleSelect} />
-          </div>
-        </div>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2">
+            <TabsTrigger value="analyzer">Phishing Analyzer</TabsTrigger>
+            <TabsTrigger value="flowchart">System Architecture</TabsTrigger>
+          </TabsList>
+          <TabsContent value="analyzer" className="mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                <PhishingAnalyzer key={inputText} />
+                <EducationalPanel />
+              </div>
+              
+              <div>
+                <SampleData onSelectSample={handleSampleSelect} />
+              </div>
+            </div>
+          </TabsContent>
+          <TabsContent value="flowchart" className="mt-6">
+            <PhishingFlowchart />
+          </TabsContent>
+        </Tabs>
       </main>
       
       <footer className="border-t border-border/40 py-6">
