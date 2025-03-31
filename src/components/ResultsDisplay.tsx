@@ -1,17 +1,18 @@
 
 import React from 'react';
-import { AnalysisResult } from '@/lib/phishingDetection';
+import { AnalysisResult, UrlAnalysisResult } from '@/lib/phishingDetection';
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Shield, ShieldAlert, ShieldCheck, AlertTriangle, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Shield, ShieldAlert, ShieldCheck, AlertTriangle, CheckCircle2, AlertCircle, Globe, Link2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface ResultsDisplayProps {
   results: AnalysisResult;
 }
 
 const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results }) => {
-  const { score, threatLevel, features, identifiedPatterns } = results;
+  const { score, threatLevel, features, identifiedPatterns, urlAnalysis } = results;
   
   const getScoreColor = () => {
     if (threatLevel === 'low') return 'bg-green-500';
@@ -84,6 +85,66 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results }) => {
           </div>
         ))}
       </div>
+      
+      {urlAnalysis && urlAnalysis.length > 0 && (
+        <div>
+          <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+            <Globe className="h-4 w-4" />
+            URL Analysis ({urlAnalysis.length} {urlAnalysis.length === 1 ? 'URL' : 'URLs'} found)
+          </h4>
+          
+          <div className="max-h-60 overflow-y-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[250px]">URL</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Details</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {urlAnalysis.map((url, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell className="font-mono text-xs break-all">
+                      <div className="flex items-center gap-1">
+                        <Link2 className="h-3 w-3 flex-shrink-0" />
+                        {url.url.length > 40 ? url.url.substring(0, 40) + '...' : url.url}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge 
+                        className={cn(
+                          "text-white px-2 py-0.5 text-xs",
+                          url.suspicious ? 'bg-phishing' : 'bg-green-500'
+                        )}
+                      >
+                        {url.suspicious ? 'Suspicious' : 'Safe'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {url.suspicious ? (
+                        <div className="space-y-1 text-xs">
+                          {url.reasons.map((reason, i) => (
+                            <div key={i} className="flex items-start gap-1">
+                              <AlertTriangle className="h-3 w-3 text-phishing flex-shrink-0 mt-0.5" />
+                              <span className="text-muted-foreground">{reason}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 text-xs">
+                          <CheckCircle2 className="h-3 w-3 text-green-400" />
+                          <span className="text-muted-foreground">No suspicious patterns detected</span>
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
       
       {identifiedPatterns.length > 0 && (
         <div>

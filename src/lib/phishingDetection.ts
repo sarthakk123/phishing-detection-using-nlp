@@ -12,12 +12,109 @@ export interface AnalysisResult {
     impersonation: number;
   };
   identifiedPatterns: string[];
+  urlAnalysis: UrlAnalysisResult[];
 }
+
+export interface UrlAnalysisResult {
+  url: string;
+  suspicious: boolean;
+  reasons: string[];
+  domain: string;
+  protocol: string;
+  tld: string;
+}
+
+// Extract domain from URL
+const extractDomain = (url: string): string => {
+  try {
+    const hostname = new URL(url).hostname;
+    return hostname;
+  } catch (e) {
+    return url;
+  }
+};
+
+// Extract TLD from domain
+const extractTld = (domain: string): string => {
+  const parts = domain.split('.');
+  return parts.length > 1 ? `.${parts[parts.length - 1]}` : '';
+};
+
+// Analyze a single URL
+const analyzeUrl = (url: string): UrlAnalysisResult => {
+  const analysis: UrlAnalysisResult = {
+    url,
+    suspicious: false,
+    reasons: [],
+    domain: '',
+    protocol: '',
+    tld: ''
+  };
+  
+  try {
+    const urlObj = new URL(url);
+    analysis.domain = urlObj.hostname;
+    analysis.protocol = urlObj.protocol;
+    analysis.tld = extractTld(urlObj.hostname);
+    
+    // Check for suspicious domains
+    for (const domain of suspiciousDomains) {
+      if (analysis.domain.includes(domain)) {
+        analysis.suspicious = true;
+        analysis.reasons.push(`Contains suspicious domain pattern: "${domain}"`);
+      }
+    }
+    
+    // Check for suspicious TLDs
+    for (const tld of suspiciousTlds) {
+      if (analysis.domain.endsWith(tld)) {
+        analysis.suspicious = true;
+        analysis.reasons.push(`Uses suspicious top-level domain: "${tld}"`);
+      }
+    }
+    
+    // Check for URL shorteners
+    const shorteners = ['bit.ly', 'tinyurl.com', 'goo.gl', 't.co', 'is.gd', 'ow.ly'];
+    for (const shortener of shorteners) {
+      if (analysis.domain.includes(shortener)) {
+        analysis.suspicious = true;
+        analysis.reasons.push(`Uses URL shortener: "${shortener}" which can hide the true destination`);
+      }
+    }
+    
+    // Check for IP address instead of domain name
+    const ipRegex = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+    if (ipRegex.test(analysis.domain)) {
+      analysis.suspicious = true;
+      analysis.reasons.push('Uses IP address instead of domain name');
+    }
+    
+    // Check for HTTP instead of HTTPS
+    if (analysis.protocol === 'http:') {
+      analysis.suspicious = true;
+      analysis.reasons.push('Uses insecure HTTP protocol instead of HTTPS');
+    }
+    
+    // Check for many subdomains (potential phishing tactic)
+    const subdomainCount = analysis.domain.split('.').length - 2;
+    if (subdomainCount > 2) {
+      analysis.suspicious = true;
+      analysis.reasons.push(`Contains ${subdomainCount} subdomains which is unusually high`);
+    }
+    
+  } catch (e) {
+    analysis.suspicious = true;
+    analysis.reasons.push('Invalid URL format');
+  }
+  
+  return analysis;
+};
 
 // Simplified NLP-based phishing detection
 export const analyzeText = (text: string): AnalysisResult => {
   const lowerText = text.toLowerCase();
   const identifiedPatterns: string[] = [];
+  const urlAnalysis: UrlAnalysisResult[] = [];
   
   // Initialize feature scores
   const features = {
@@ -54,32 +151,20 @@ export const analyzeText = (text: string): AnalysisResult => {
     }
   }
   
-  // Check for URLs and analyze them
+  // Extract and analyze URLs
   const urlRegex = /(https?:\/\/[^\s]+)/g;
-  const urls = lowerText.match(urlRegex);
+  const urls = text.match(urlRegex);
   
   if (urls) {
     for (const url of urls) {
-      // Check for suspicious domains
-      for (const domain of suspiciousDomains) {
-        if (url.includes(domain)) {
-          features.suspiciousLinks += 0.25;
-          identifiedPatterns.push(`Suspicious domain: "${domain}" in ${url}`);
-        }
-      }
+      const analysis = analyzeUrl(url);
+      urlAnalysis.push(analysis);
       
-      // Check for suspicious TLDs
-      for (const tld of suspiciousTlds) {
-        if (url.endsWith(tld)) {
-          features.suspiciousLinks += 0.2;
-          identifiedPatterns.push(`Suspicious TLD: "${tld}" in ${url}`);
+      if (analysis.suspicious) {
+        features.suspiciousLinks += 0.25;
+        for (const reason of analysis.reasons) {
+          identifiedPatterns.push(`URL issue (${url}): ${reason}`);
         }
-      }
-      
-      // Check for URL obfuscation
-      if (url.includes('bit.ly') || url.includes('tinyurl') || url.includes('goo.gl')) {
-        features.suspiciousLinks += 0.15;
-        identifiedPatterns.push(`URL shortener detected: ${url}`);
       }
     }
   }
@@ -127,6 +212,7 @@ export const analyzeText = (text: string): AnalysisResult => {
     score,
     threatLevel,
     features,
-    identifiedPatterns
+    identifiedPatterns,
+    urlAnalysis
   };
 };
