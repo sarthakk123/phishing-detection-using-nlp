@@ -3,9 +3,10 @@ import React from 'react';
 import { AnalysisResult, UrlAnalysisResult } from '@/lib/phishingDetection';
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Shield, ShieldAlert, ShieldCheck, AlertTriangle, CheckCircle2, AlertCircle, Globe, Link2 } from 'lucide-react';
+import { Shield, ShieldAlert, ShieldCheck, AlertTriangle, CheckCircle2, AlertCircle, Globe, Link2, ExternalLink, AlertOctagon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface ResultsDisplayProps {
   results: AnalysisResult;
@@ -30,6 +31,12 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results }) => {
     if (value < 0.3) return 'bg-green-500';
     if (value < 0.6) return 'bg-yellow-500';
     return 'bg-phishing';
+  };
+
+  const getRiskScoreColor = (score: number) => {
+    if (score < 30) return 'text-green-500';
+    if (score < 60) return 'text-yellow-500';
+    return 'text-phishing';
   };
 
   return (
@@ -97,8 +104,9 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results }) => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[250px]">URL</TableHead>
+                  <TableHead className="w-[200px]">URL</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Risk Score</TableHead>
                   <TableHead>Details</TableHead>
                 </TableRow>
               </TableHeader>
@@ -110,6 +118,9 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results }) => {
                         <Link2 className="h-3 w-3 flex-shrink-0" />
                         {url.url.length > 40 ? url.url.substring(0, 40) + '...' : url.url}
                       </div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        Domain: {url.domain}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge 
@@ -120,6 +131,23 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results }) => {
                       >
                         {url.suspicious ? 'Suspicious' : 'Safe'}
                       </Badge>
+                      {url.brandImpersonation && (
+                        <div className="mt-1">
+                          <Badge variant="outline" className="text-xs border-yellow-500 text-yellow-500">
+                            Impersonating {url.brandImpersonation}
+                          </Badge>
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className={cn("font-medium", getRiskScoreColor(url.riskScore))}>
+                        {url.riskScore}%
+                      </div>
+                      {!url.securityFeatures.https && (
+                        <Badge variant="outline" className="mt-1 text-xs border-red-500 text-red-500">
+                          Not Secure
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       {url.suspicious ? (
@@ -130,6 +158,14 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results }) => {
                               <span className="text-muted-foreground">{reason}</span>
                             </div>
                           ))}
+                          {url.redirectCount > 0 && (
+                            <div className="flex items-start gap-1">
+                              <ExternalLink className="h-3 w-3 text-yellow-500 flex-shrink-0 mt-0.5" />
+                              <span className="text-muted-foreground">
+                                Contains redirects ({url.redirectCount} detected)
+                              </span>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="flex items-center gap-1 text-xs">
@@ -143,6 +179,16 @@ const ResultsDisplay: React.FC<ResultsDisplayProps> = ({ results }) => {
               </TableBody>
             </Table>
           </div>
+          
+          {urlAnalysis.some(url => url.suspicious) && (
+            <Alert variant="destructive" className="mt-4">
+              <AlertOctagon className="h-4 w-4" />
+              <AlertTitle>URL Security Alert</AlertTitle>
+              <AlertDescription>
+                One or more suspicious URLs were detected in this message. Be cautious about clicking any links and verify the sender's identity before taking any action.
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
       )}
       
