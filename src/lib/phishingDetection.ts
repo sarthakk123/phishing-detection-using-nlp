@@ -1,4 +1,3 @@
-
 import { phishingKeywords, suspiciousDomains, suspiciousTlds } from './sampleTexts';
 
 export interface AnalysisResult {
@@ -64,7 +63,6 @@ const checkForTyposquatting = (domain: string): string | null => {
     { name: 'Bank', domains: ['bank', 'chase', 'wellsfargo', 'bankofamerica', 'citibank'] }
   ];
 
-  // Calculate Levenshtein distance between two strings
   const levenshteinDistance = (a: string, b: string): number => {
     if (a.length === 0) return b.length;
     if (b.length === 0) return a.length;
@@ -93,16 +91,13 @@ const checkForTyposquatting = (domain: string): string | null => {
 
   for (const brand of popularBrands) {
     for (const brandDomain of brand.domains) {
-      // Check if the domain contains the brand name with slight modifications
       if (domain.includes(brandDomain) && domain !== brandDomain) {
         return brand.name;
       }
 
-      // Check for common typosquatting techniques
       const domainWithoutTld = domain.split('.')[0];
       const distance = levenshteinDistance(domainWithoutTld, brandDomain);
       
-      // If the domain is very similar to a known brand (small Levenshtein distance)
       if (distance > 0 && distance <= 2 && domainWithoutTld !== brandDomain) {
         return brand.name;
       }
@@ -114,7 +109,6 @@ const checkForTyposquatting = (domain: string): string | null => {
 
 // Check for homograph attack (using similar-looking characters)
 const checkForHomographAttack = (domain: string): boolean => {
-  // Common character substitutions in homograph attacks
   const suspiciousChars = [
     'а', 'е', 'о', 'р', 'с', 'ѕ', 'і', 'ј', 'ԁ', 'ɡ', 'ʏ', // Cyrillic/similar chars
     '0', '1', '2', '5', // Digits that look like letters
@@ -134,6 +128,15 @@ const checkForHomographAttack = (domain: string): boolean => {
 // Check if domain uses excessive subdomains
 const hasExcessiveSubdomains = (domain: string): boolean => {
   return domain.split('.').length > 3;
+};
+
+// Check for short suspicious URLs (common in phishing attacks)
+const isShortSuspiciousUrl = (url: string, domain: string): boolean => {
+  const isShortDomain = domain.split('.')[0].length < 5;
+  const hasRandomPath = url.includes('/') && /\/[a-zA-Z0-9]{6,}$/.test(url);
+  const hasNumericChars = /\d/.test(domain);
+  
+  return (isShortDomain && hasRandomPath) || (isShortDomain && hasNumericChars && hasRandomPath);
 };
 
 // Analyze a single URL
@@ -187,15 +190,29 @@ export const analyzeUrl = (url: string): UrlAnalysisResult => {
       }
     }
     
-    // Check for URL shorteners
+    // Enhanced URL shortener detection
     const shorteners = ['bit.ly', 'tinyurl.com', 'goo.gl', 't.co', 'is.gd', 'ow.ly', 'buff.ly', 'rebrand.ly', 'shorturl.at', 'tiny.cc'];
-    for (const shortener of shorteners) {
-      if (analysis.domain.includes(shortener)) {
-        analysis.suspicious = true;
-        analysis.reasons.push(`Uses URL shortener: "${shortener}" which can hide the true destination`);
-        analysis.riskScore += 15;
-        analysis.redirectCount = 1; // Assuming at least one redirect for shorteners
+    if (analysis.domain.length < 6 && /\d/.test(analysis.domain)) {
+      analysis.suspicious = true;
+      analysis.reasons.push('Uses suspicious short URL domain with numbers (likely a shortener)');
+      analysis.riskScore += 35;
+      analysis.redirectCount = 1;
+    } else {
+      for (const shortener of shorteners) {
+        if (analysis.domain.includes(shortener)) {
+          analysis.suspicious = true;
+          analysis.reasons.push(`Uses URL shortener: "${shortener}" which can hide the true destination`);
+          analysis.riskScore += 15;
+          analysis.redirectCount = 1; // Assuming at least one redirect for shorteners
+        }
       }
+    }
+    
+    // Check for short, suspicious URLs
+    if (isShortSuspiciousUrl(url, analysis.domain)) {
+      analysis.suspicious = true;
+      analysis.reasons.push('Uses suspicious short domain with random alphanumeric path');
+      analysis.riskScore += 30;
     }
     
     // Check for IP address instead of domain name
@@ -277,6 +294,11 @@ const extractAllUrls = (text: string): string[] => {
   const noProtocolUrls = text.match(noProtocolRegex) || [];
   urls.push(...noProtocolUrls.map(url => `http://${url}`));
   
+  // Enhanced extraction for short domains with paths (common in phishing)
+  const shortUrlRegex = /\b([a-z0-9]{2,5}\.[a-z]{2,3}\/[a-zA-Z0-9]{4,})\b/g;
+  const shortUrls = text.match(shortUrlRegex) || [];
+  urls.push(...shortUrls.map(url => `http://${url}`));
+  
   // Find potential obfuscated URLs with spaces or broken into parts
   const words = text.split(/\s+/);
   for (let i = 0; i < words.length; i++) {
@@ -314,12 +336,27 @@ export const analyzeText = (text: string): AnalysisResult => {
     impersonation: 0,
   };
   
+  // Check for numeric character substitution (common in phishing)
+  if (/\b[a-zA-Z]*[0-9]+[a-zA-Z]*\b/.test(text)) {
+    features.impersonation += 0.2;
+    identifiedPatterns.push('Uses numeric character substitution (e.g., "0" for "O")');
+  }
+  
   // Check for urgency indicators
   const urgencyWords = ['urgent', 'immediately', 'alert', 'warning', 'now', 'quick', 'fast', 'important', 'attention', 'critical', 'limited time'];
   for (const word of urgencyWords) {
     if (lowerText.includes(word)) {
       features.urgency += 0.2;
       identifiedPatterns.push(`Urgency indicator: "${word}"`);
+    }
+  }
+  
+  // Check for money-related terms (common in phishing)
+  const moneyTerms = ['money', 'cash', 'credit', 'debit', 'bank', 'account', 'payment', 'transfer', 'withdraw', 'deposit', 'rs', 'rupees', 'usd', 'euro', 'dollar', 'amount'];
+  for (const term of moneyTerms) {
+    if (lowerText.includes(term)) {
+      features.sensitiveInfo += 0.2;
+      identifiedPatterns.push(`Money-related term: "${term}"`);
     }
   }
   
@@ -340,11 +377,11 @@ export const analyzeText = (text: string): AnalysisResult => {
     }
   }
   
-  // Check for URL-based threats
+  // Check for URL-based threats with increased weight for short suspicious URLs
   if (urlAnalysis.length > 0) {
     for (const analysis of urlAnalysis) {
       if (analysis.suspicious) {
-        features.suspiciousLinks += 0.25;
+        features.suspiciousLinks += 0.35;
         for (const reason of analysis.reasons) {
           identifiedPatterns.push(`URL issue (${analysis.url}): ${reason}`);
         }
@@ -354,12 +391,18 @@ export const analyzeText = (text: string): AnalysisResult => {
           features.impersonation += 0.2;
           identifiedPatterns.push(`URL impersonates ${analysis.brandImpersonation}`);
         }
+        
+        // Special handling for short suspicious domains
+        if (analysis.domain.length < 6 && /\d/.test(analysis.domain)) {
+          features.suspiciousLinks += 0.25;
+          features.impersonation += 0.15;
+        }
       }
     }
   }
   
   // Check for impersonation of known brands
-  const brands = ['amazon', 'netflix', 'paypal', 'apple', 'microsoft', 'google', 'facebook', 'bank', 'instagram', 'twitter'];
+  const brands = ['amazon', 'netflix', 'paypal', 'apple', 'microsoft', 'google', 'facebook', 'bank', 'instagram', 'twitter', 'rummy'];
   for (const brand of brands) {
     const brandRegex = new RegExp(`\\b${brand}\\b`, 'i');
     if (brandRegex.test(lowerText)) {
@@ -374,7 +417,8 @@ export const analyzeText = (text: string): AnalysisResult => {
     { pattern: /credit card|card number|cvv|expiration date/i, message: 'Requests for credit card information' },
     { pattern: /username.*?password/i, message: 'Requests for login credentials' },
     { pattern: /bank.{1,20}(account|routing)/i, message: 'Requests for banking information' },
-    { pattern: /click.{1,30}(link|here|confirm)/i, message: 'Encourages clicking on links' }
+    { pattern: /click.{1,30}(link|here|confirm)/i, message: 'Encourages clicking on links' },
+    { pattern: /withdraw|deposit|transfer|credited|debited/i, message: 'References to financial transactions' }
   ];
   
   for (const { pattern, message } of sensitiveInfoPatterns) {
@@ -401,6 +445,11 @@ export const analyzeText = (text: string): AnalysisResult => {
   let score = 0;
   for (const [key, weight] of Object.entries(weights)) {
     score += features[key as keyof typeof features] * weight;
+  }
+  
+  // Special case for short URL domains (common in phishing)
+  if (urlAnalysis.some(url => url.domain.length < 6 && /\d/.test(url.domain))) {
+    score = Math.max(score, 0.7); // Ensure at least high-medium threat level
   }
   
   // Determine threat level
