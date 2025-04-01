@@ -1,4 +1,3 @@
-
 import { phishingKeywords, suspiciousDomains, suspiciousTlds } from './sampleTexts';
 
 export interface AnalysisResult {
@@ -51,13 +50,51 @@ const legitimateDomains = [
   'reddit.com', 'www.reddit.com'
 ];
 
+// Helper function to normalize URLs before processing
+const normalizeUrl = (inputUrl: string): string => {
+  let url = inputUrl.trim();
+  
+  // Fix common URL format issues
+  
+  // Fix double protocol issues like http://https://
+  if (url.match(/^http:\/\/https:\/\//i)) {
+    url = url.replace(/^http:\/\//i, '');
+  }
+  
+  // Fix http://https// (missing colon)
+  if (url.match(/^http:\/\/https\/\//i)) {
+    url = url.replace(/^http:\/\/https\/\//i, 'https://');
+  }
+  
+  // Fix doubled http protocols
+  if (url.match(/^http:\/\/http:\/\//i)) {
+    url = url.replace(/^http:\/\//i, '');
+  }
+  
+  // Fix doubled https protocols
+  if (url.match(/^https:\/\/https:\/\//i)) {
+    url = url.replace(/^https:\/\//i, '');
+  }
+  
+  // Handle missing slash after protocol
+  if (url.match(/^(https?:\/\/)([^\/])/i)) {
+    url = url.replace(/^(https?:\/\/)([^\/])/i, '$1/$2');
+  }
+  
+  return url;
+};
+
 // Extract domain from URL
 const extractDomain = (url: string): string => {
   try {
-    const hostname = new URL(url).hostname;
+    // First normalize the URL to fix common formatting issues
+    const normalizedUrl = normalizeUrl(url);
+    const hostname = new URL(normalizedUrl).hostname;
     return hostname;
   } catch (e) {
-    return url;
+    // If URL parsing fails, attempt to extract domain from string
+    const domainMatch = url.match(/(?:https?:\/\/)?(?:www\.)?([^\/\s]+)/i);
+    return domainMatch ? domainMatch[1] : url;
   }
 };
 
@@ -198,8 +235,11 @@ const isShortSuspiciousUrl = (url: string, domain: string): boolean => {
 
 // Analyze a single URL
 export const analyzeUrl = (url: string): UrlAnalysisResult => {
+  // First, normalize the URL to fix any formatting issues
+  const normalizedUrl = normalizeUrl(url);
+  
   const analysis: UrlAnalysisResult = {
-    url,
+    url: normalizedUrl, // Use the normalized URL
     suspicious: false,
     reasons: [],
     domain: '',
@@ -219,10 +259,10 @@ export const analyzeUrl = (url: string): UrlAnalysisResult => {
     let urlObj: URL;
     
     // Check for proper URL format and add protocol if missing
-    if (!url.match(/^https?:\/\//i)) {
-      urlObj = new URL('http://' + url);
+    if (!normalizedUrl.match(/^https?:\/\//i)) {
+      urlObj = new URL('http://' + normalizedUrl);
     } else {
-      urlObj = new URL(url);
+      urlObj = new URL(normalizedUrl);
     }
     
     analysis.domain = urlObj.hostname;
@@ -381,23 +421,34 @@ export const analyzeUrl = (url: string): UrlAnalysisResult => {
 const extractAllUrls = (text: string): string[] => {
   const urls: string[] = [];
   
+  // Preprocess text to handle malformed URLs
+  let processedText = text;
+  
+  // Fix common URL format issues like http://https//
+  if (processedText.includes('http://https//')) {
+    processedText = processedText.replace(/http:\/\/https\/\//g, 'https://');
+  }
+  
+  // Fix other double protocol issues
+  processedText = processedText.replace(/https?:\/\/https?:\/\//gi, 'https://');
+  
   // Standard URL regex
   const standardUrlRegex = /(https?:\/\/[^\s]+)/g;
-  const standardUrls = text.match(standardUrlRegex) || [];
-  urls.push(...standardUrls);
+  const standardUrls = processedText.match(standardUrlRegex) || [];
+  urls.push(...standardUrls.map(url => normalizeUrl(url)));
   
   // Find URLs without protocol (www.example.com)
   const noProtocolRegex = /(?<!\S)(www\.[^\s]+)/g;
-  const noProtocolUrls = text.match(noProtocolRegex) || [];
+  const noProtocolUrls = processedText.match(noProtocolRegex) || [];
   urls.push(...noProtocolUrls.map(url => `http://${url}`));
   
   // Enhanced extraction for short domains with paths (common in phishing)
   const shortUrlRegex = /\b([a-z0-9]{2,5}\.[a-z]{2,3}\/[a-zA-Z0-9]{4,})\b/g;
-  const shortUrls = text.match(shortUrlRegex) || [];
+  const shortUrls = processedText.match(shortUrlRegex) || [];
   urls.push(...shortUrls.map(url => `http://${url}`));
   
   // Find potential obfuscated URLs with spaces or broken into parts
-  const words = text.split(/\s+/);
+  const words = processedText.split(/\s+/);
   for (let i = 0; i < words.length; i++) {
     // Check for domain-like strings
     if (words[i].includes('.') && !words[i].startsWith('@') && !words[i].match(/^\d+\.\d+$/)) {
@@ -411,8 +462,8 @@ const extractAllUrls = (text: string): string[] => {
     }
   }
   
-  // Remove duplicates
-  return [...new Set(urls)];
+  // Remove duplicates and normalize all URLs
+  return [...new Set(urls)].map(url => normalizeUrl(url));
 };
 
 // Simplified NLP-based phishing detection

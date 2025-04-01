@@ -38,6 +38,7 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
     // Simulate processing time
     setTimeout(() => {
       try {
+        // Pass the text directly to analyzeText without pre-processing here
         const analysisResults = analyzeText(inputText);
         setResults(analysisResults);
         
@@ -72,6 +73,12 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
     setResults(null);
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputText(e.target.value);
+    // Clear previous results when input changes
+    if (results) setResults(null);
+  };
+
   return (
     <div className="w-full phishing-card rounded-lg p-4 md:p-6">
       <div className="mb-5">
@@ -87,7 +94,7 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
       <div className="space-y-4">
         <Textarea
           value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
+          onChange={handleInputChange}
           placeholder="Paste suspicious text here for analysis..."
           className="min-h-[120px] bg-card/50 border-cyber-blue/20"
         />
