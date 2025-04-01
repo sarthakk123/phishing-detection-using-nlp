@@ -61,7 +61,10 @@ export default {
 				cyber: {
 					dark: '#1A1F2C',
 					blue: '#0EA5E9',
-					light: '#E5DEFF'
+					light: '#E5DEFF',
+					green: '#10b981',
+					purple: '#8b5cf6',
+					pink: '#ec4899'
 				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
@@ -99,12 +102,48 @@ export default {
 				'pulse-warning': {
 					'0%, 100%': { opacity: '1' },
 					'50%': { opacity: '0.7' }
+				},
+				'float': {
+					'0%, 100%': { transform: 'translateY(0)' },
+					'50%': { transform: 'translateY(-10px)' }
+				},
+				'glow': {
+					'0%, 100%': { 
+						boxShadow: '0 0 5px 2px rgba(14, 165, 233, 0.3)',
+						transform: 'scale(1)'
+					},
+					'50%': { 
+						boxShadow: '0 0 15px 5px rgba(14, 165, 233, 0.5)',
+						transform: 'scale(1.02)'
+					}
+				},
+				'shimmer': {
+					'0%': { backgroundPosition: '-200% 0' },
+					'100%': { backgroundPosition: '200% 0' }
+				},
+				'fade-in': {
+					'0%': { 
+						opacity: '0',
+						transform: 'translateY(10px)'
+					},
+					'100%': { 
+						opacity: '1',
+						transform: 'translateY(0)'
+					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
-				'pulse-warning': 'pulse-warning 2s ease-in-out infinite'
+				'pulse-warning': 'pulse-warning 2s ease-in-out infinite',
+				'float': 'float 5s ease-in-out infinite',
+				'glow': 'glow 3s ease-in-out infinite',
+				'shimmer': 'shimmer 3s linear infinite',
+				'fade-in': 'fade-in 0.5s ease-out'
+			},
+			backgroundImage: {
+				'cyber-gradient': 'linear-gradient(90deg, #0ea5e9, #3b82f6, #0ea5e9)',
+				'threat-gradient': 'linear-gradient(90deg, #10b981, #f59e0b, #ef4444)'
 			}
 		}
 	},
