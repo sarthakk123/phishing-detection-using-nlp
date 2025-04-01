@@ -51,7 +51,7 @@ const legitimateDomains = [
 ];
 
 // Helper function to normalize URLs before processing
-const normalizeUrl = (inputUrl: string): string => {
+export const normalizeUrl = (inputUrl: string): string => {
   let url = inputUrl.trim();
   
   // Fix common URL format issues
