@@ -60,10 +60,10 @@ export default {
 				},
 				cyber: {
 					dark: '#1A1F2C',
-					blue: '#0EA5E9',
+					blue: '#4169E1',
 					light: '#E5DEFF',
 					green: '#10b981',
-					purple: '#8b5cf6',
+					purple: '#6366F1',
 					pink: '#ec4899'
 				},
 				sidebar: {

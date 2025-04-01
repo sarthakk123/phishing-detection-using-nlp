@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, AlertTriangle, RotateCw, Sparkles } from 'lucide-react';
+import { Search, AlertTriangle, RotateCw } from 'lucide-react';
 import { analyzeText, AnalysisResult, normalizeUrl } from '@/lib/phishingDetection';
 import ResultsDisplay from './ResultsDisplay';
 import { toast } from '@/components/ui/use-toast';
@@ -96,10 +95,10 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
   };
 
   return (
-    <div className="w-full phishing-card animate-pulse-glow">
-      <div className="mb-5">
-        <h2 className="text-xl font-semibold text-cyber-blue mb-2 flex items-center">
-          <Search className="mr-2 h-5 w-5 animate-cyber-pulse text-cyan-400" />
+    <div className="w-full phishing-card">
+      <div className="mb-4">
+        <h2 className="text-xl font-semibold mb-2 flex items-center">
+          <Search className="mr-2 h-5 w-5 text-primary" />
           Text Analysis
         </h2>
         <p className="text-sm text-muted-foreground">
@@ -112,31 +111,25 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
           value={inputText}
           onChange={handleInputChange}
           placeholder="Paste suspicious text here for analysis..."
-          className="min-h-[120px] bg-card/50 border-cyan-500/30 focus:border-cyan-400 
-                    focus:ring-cyan-400/20 transition-all duration-300"
+          className="min-h-[120px] bg-background border-primary/30 focus:border-primary 
+                    focus:ring-primary/20 transition-all duration-300"
         />
         
         <div className="flex flex-wrap gap-2">
           <Button 
             onClick={handleAnalyze} 
-            className="cyber-button group"
+            className="cyber-button"
             disabled={isAnalyzing}
           >
             {isAnalyzing ? (
               <>
                 <RotateCw className="mr-2 h-4 w-4 animate-spin" />
-                <span className="relative">
-                  Analyzing
-                  <span className="animate-pulse">...</span>
-                </span>
+                <span>Analyzing...</span>
               </>
             ) : (
               <>
-                <AlertTriangle className="mr-2 h-4 w-4 group-hover:scale-110 transition-transform" />
-                <span className="relative">
-                  Analyze for Threats
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-white group-hover:w-full transition-all duration-300"></span>
-                </span>
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                <span>Analyze for Threats</span>
               </>
             )}
           </Button>
@@ -144,8 +137,8 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
           <Button 
             variant="outline" 
             onClick={handleClear}
-            className="border-cyan-500/30 text-muted-foreground hover:text-foreground 
-                      hover:border-cyan-400 transition-all duration-300"
+            className="border-primary/30 text-muted-foreground hover:text-foreground 
+                      hover:border-primary transition-all duration-300"
           >
             Clear
           </Button>
@@ -154,14 +147,7 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
 
       {results && (
         <div className={`mt-6 transition-all duration-500 ${showResults ? 'opacity-100 transform-none' : 'opacity-0 translate-y-4'}`}>
-          <div className="relative">
-            {showResults && results.threatLevel === 'high' && (
-              <div className="absolute -top-6 -right-6 z-10">
-                <Sparkles className="h-12 w-12 text-phishing animate-cyber-pulse" />
-              </div>
-            )}
-            <ResultsDisplay results={results} />
-          </div>
+          <ResultsDisplay results={results} />
         </div>
       )}
     </div>
