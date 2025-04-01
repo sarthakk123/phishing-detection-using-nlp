@@ -1,3 +1,4 @@
+
 import { phishingKeywords, suspiciousDomains, suspiciousTlds } from './sampleTexts';
 
 export interface AnalysisResult {
@@ -31,6 +32,25 @@ export interface UrlAnalysisResult {
   };
 }
 
+// List of legitimate domains that should not trigger typosquatting alerts
+const legitimateDomains = [
+  'google.com', 'www.google.com', 
+  'microsoft.com', 'www.microsoft.com',
+  'apple.com', 'www.apple.com',
+  'amazon.com', 'www.amazon.com',
+  'facebook.com', 'www.facebook.com',
+  'twitter.com', 'www.twitter.com',
+  'instagram.com', 'www.instagram.com',
+  'linkedin.com', 'www.linkedin.com',
+  'netflix.com', 'www.netflix.com',
+  'paypal.com', 'www.paypal.com',
+  'youtube.com', 'www.youtube.com',
+  'github.com', 'www.github.com',
+  'wikipedia.org', 'www.wikipedia.org',
+  'yahoo.com', 'www.yahoo.com',
+  'reddit.com', 'www.reddit.com'
+];
+
 // Extract domain from URL
 const extractDomain = (url: string): string => {
   try {
@@ -49,6 +69,11 @@ const extractTld = (domain: string): string => {
 
 // Check for typosquatting (similar domain names to popular brands)
 const checkForTyposquatting = (domain: string): string | null => {
+  // First, check if it's a legitimate domain - if so, return null immediately
+  if (legitimateDomains.includes(domain.toLowerCase())) {
+    return null;
+  }
+  
   const popularBrands = [
     { name: 'Google', domains: ['google'] },
     { name: 'Amazon', domains: ['amazon'] },
@@ -89,16 +114,29 @@ const checkForTyposquatting = (domain: string): string | null => {
     return matrix[b.length][a.length];
   };
 
+  // Extract the domain name without subdomain and TLD for comparison
+  const domainWithoutTld = domain.split('.')[0];
+  const domainWithoutWww = domain.replace(/^www\./, '');
+  const domainParts = domainWithoutWww.split('.');
+  const domainCore = domainParts.length > 1 ? domainParts[domainParts.length - 2] : domainParts[0];
+
   for (const brand of popularBrands) {
     for (const brandDomain of brand.domains) {
-      if (domain.includes(brandDomain) && domain !== brandDomain) {
-        return brand.name;
+      // Exact inclusion check with more precision
+      if (domainCore.includes(brandDomain) && domainCore !== brandDomain) {
+        // More careful analysis to avoid false positives
+        // Only flag if the domain has additional characters inserted within the brand name
+        const regex = new RegExp(`${brandDomain.split('').join('[^a-z0-9]?')}`, 'i');
+        if (regex.test(domainCore) && domainCore !== brandDomain) {
+          return brand.name;
+        }
       }
 
-      const domainWithoutTld = domain.split('.')[0];
-      const distance = levenshteinDistance(domainWithoutTld, brandDomain);
+      // More strict Levenshtein distance threshold for common domains
+      const distance = levenshteinDistance(domainCore.toLowerCase(), brandDomain.toLowerCase());
+      const strictThreshold = brandDomain.length <= 4 ? 1 : 2; // Stricter for short brands
       
-      if (distance > 0 && distance <= 2 && domainWithoutTld !== brandDomain) {
+      if (distance > 0 && distance <= strictThreshold && domainCore.toLowerCase() !== brandDomain.toLowerCase()) {
         return brand.name;
       }
     }
@@ -109,6 +147,11 @@ const checkForTyposquatting = (domain: string): string | null => {
 
 // Check for homograph attack (using similar-looking characters)
 const checkForHomographAttack = (domain: string): boolean => {
+  // Skip check for legitimate domains
+  if (legitimateDomains.includes(domain.toLowerCase())) {
+    return false;
+  }
+  
   const suspiciousChars = [
     'а', 'е', 'о', 'р', 'с', 'ѕ', 'і', 'ј', 'ԁ', 'ɡ', 'ʏ', // Cyrillic/similar chars
     '0', '1', '2', '5', // Digits that look like letters
@@ -127,14 +170,28 @@ const checkForHomographAttack = (domain: string): boolean => {
 
 // Check if domain uses excessive subdomains
 const hasExcessiveSubdomains = (domain: string): boolean => {
+  // Skip check for www subdomains (common legitimate pattern)
+  if (domain.startsWith('www.')) {
+    const domainWithoutWww = domain.substring(4);
+    return domainWithoutWww.split('.').length > 3;
+  }
+  
   return domain.split('.').length > 3;
 };
 
 // Check for short suspicious URLs (common in phishing attacks)
 const isShortSuspiciousUrl = (url: string, domain: string): boolean => {
-  const isShortDomain = domain.split('.')[0].length < 5;
+  // Skip check for legitimate domains
+  if (legitimateDomains.includes(domain.toLowerCase())) {
+    return false;
+  }
+  
+  const domainWithoutWww = domain.replace(/^www\./, '');
+  const domainName = domainWithoutWww.split('.')[0];
+  
+  const isShortDomain = domainName.length < 5;
   const hasRandomPath = url.includes('/') && /\/[a-zA-Z0-9]{6,}$/.test(url);
-  const hasNumericChars = /\d/.test(domain);
+  const hasNumericChars = /\d/.test(domainName);
   
   return (isShortDomain && hasRandomPath) || (isShortDomain && hasNumericChars && hasRandomPath);
 };
@@ -159,47 +216,69 @@ export const analyzeUrl = (url: string): UrlAnalysisResult => {
   };
   
   try {
-    const urlObj = new URL(url);
+    let urlObj: URL;
+    
+    // Check for proper URL format and add protocol if missing
+    if (!url.match(/^https?:\/\//i)) {
+      urlObj = new URL('http://' + url);
+    } else {
+      urlObj = new URL(url);
+    }
+    
     analysis.domain = urlObj.hostname;
     analysis.protocol = urlObj.protocol;
     analysis.tld = extractTld(urlObj.hostname);
     
-    // Check for HTTPS
+    // Normalize the domain
+    const normalizedDomain = analysis.domain.toLowerCase();
+    
+    // Check if it's a known legitimate domain
+    const isLegitimate = legitimateDomains.includes(normalizedDomain);
+    
+    // Check for HTTPS - less weight for legitimate domains and only consider as supporting factor
     analysis.securityFeatures.https = urlObj.protocol === 'https:';
-    if (!analysis.securityFeatures.https) {
-      analysis.suspicious = true;
+    if (!analysis.securityFeatures.https && !isLegitimate) {
       analysis.reasons.push('Uses insecure HTTP protocol instead of HTTPS');
-      analysis.riskScore += 25;
+      analysis.riskScore += 15; // Reduced from 25
+    } else if (!analysis.securityFeatures.https && isLegitimate) {
+      // For legitimate domains, HTTP is less concerning but still worth noting
+      analysis.reasons.push('Uses HTTP instead of HTTPS');
+      analysis.riskScore += 5;
     }
     
-    // Check for suspicious domains
-    for (const domain of suspiciousDomains) {
-      if (analysis.domain.includes(domain)) {
-        analysis.suspicious = true;
-        analysis.reasons.push(`Contains suspicious domain pattern: "${domain}"`);
-        analysis.riskScore += 20;
+    // Check for suspicious domains - skip for legitimate domains
+    if (!isLegitimate) {
+      for (const domain of suspiciousDomains) {
+        if (normalizedDomain.includes(domain)) {
+          analysis.suspicious = true;
+          analysis.reasons.push(`Contains suspicious domain pattern: "${domain}"`);
+          analysis.riskScore += 20;
+        }
       }
     }
     
     // Check for suspicious TLDs
-    for (const tld of suspiciousTlds) {
-      if (analysis.domain.endsWith(tld)) {
-        analysis.suspicious = true;
-        analysis.reasons.push(`Uses suspicious top-level domain: "${tld}"`);
-        analysis.riskScore += 15;
+    if (!isLegitimate) {
+      for (const tld of suspiciousTlds) {
+        if (normalizedDomain.endsWith(tld)) {
+          analysis.suspicious = true;
+          analysis.reasons.push(`Uses suspicious top-level domain: "${tld}"`);
+          analysis.riskScore += 15;
+        }
       }
     }
     
     // Enhanced URL shortener detection
     const shorteners = ['bit.ly', 'tinyurl.com', 'goo.gl', 't.co', 'is.gd', 'ow.ly', 'buff.ly', 'rebrand.ly', 'shorturl.at', 'tiny.cc'];
-    if (analysis.domain.length < 6 && /\d/.test(analysis.domain)) {
+    
+    if (!isLegitimate && normalizedDomain.length < 6 && /\d/.test(normalizedDomain)) {
       analysis.suspicious = true;
       analysis.reasons.push('Uses suspicious short URL domain with numbers (likely a shortener)');
       analysis.riskScore += 35;
       analysis.redirectCount = 1;
     } else {
       for (const shortener of shorteners) {
-        if (analysis.domain.includes(shortener)) {
+        if (normalizedDomain.includes(shortener)) {
           analysis.suspicious = true;
           analysis.reasons.push(`Uses URL shortener: "${shortener}" which can hide the true destination`);
           analysis.riskScore += 15;
@@ -208,8 +287,8 @@ export const analyzeUrl = (url: string): UrlAnalysisResult => {
       }
     }
     
-    // Check for short, suspicious URLs
-    if (isShortSuspiciousUrl(url, analysis.domain)) {
+    // Check for short, suspicious URLs - skip for legitimate domains
+    if (!isLegitimate && isShortSuspiciousUrl(url, analysis.domain)) {
       analysis.suspicious = true;
       analysis.reasons.push('Uses suspicious short domain with random alphanumeric path');
       analysis.riskScore += 30;
@@ -223,30 +302,32 @@ export const analyzeUrl = (url: string): UrlAnalysisResult => {
       analysis.riskScore += 30;
     }
     
-    // Check for excessive subdomains
-    if (hasExcessiveSubdomains(analysis.domain)) {
+    // Check for excessive subdomains - skip common patterns like www
+    if (!isLegitimate && hasExcessiveSubdomains(analysis.domain)) {
       analysis.suspicious = true;
       analysis.reasons.push(`Contains excessive subdomains which is unusual`);
       analysis.riskScore += 10;
     }
     
-    // Check for typosquatting
-    const impersonated = checkForTyposquatting(analysis.domain);
-    if (impersonated) {
-      analysis.suspicious = true;
-      analysis.brandImpersonation = impersonated;
-      analysis.reasons.push(`Possible typosquatting attempt of "${impersonated}"`);
-      analysis.riskScore += 25;
+    // Check for typosquatting - not for legitimate domains
+    if (!isLegitimate) {
+      const impersonated = checkForTyposquatting(analysis.domain);
+      if (impersonated) {
+        analysis.suspicious = true;
+        analysis.brandImpersonation = impersonated;
+        analysis.reasons.push(`Possible typosquatting attempt of "${impersonated}"`);
+        analysis.riskScore += 25;
+      }
     }
     
-    // Check for homograph attack
-    if (checkForHomographAttack(analysis.domain)) {
+    // Check for homograph attack - not for legitimate domains
+    if (!isLegitimate && checkForHomographAttack(analysis.domain)) {
       analysis.suspicious = true;
       analysis.reasons.push('Possible homograph attack using deceptive characters');
       analysis.riskScore += 35;
     }
     
-    // Check for suspicious URL patterns
+    // Check for suspicious URL patterns - less weight for legitimate domains
     const suspiciousUrlPatterns = [
       { pattern: /login|signin|account|password|verify|secure|auth/, message: 'Contains sensitive authentication terms in URL' },
       { pattern: /confirm|update|alert|warning/, message: 'Contains urgent action terms in URL' },
@@ -257,18 +338,34 @@ export const analyzeUrl = (url: string): UrlAnalysisResult => {
     
     for (const { pattern, message } of suspiciousUrlPatterns) {
       if (pattern.test(url)) {
-        analysis.suspicious = true;
-        analysis.reasons.push(message);
-        analysis.riskScore += 10;
+        if (!isLegitimate) {
+          analysis.suspicious = true;
+          analysis.reasons.push(message);
+          analysis.riskScore += 10;
+        } else {
+          // For legitimate domains, suspicious patterns are less concerning
+          analysis.reasons.push(message + ' (but on a legitimate domain)');
+          analysis.riskScore += 3;
+        }
       }
     }
     
     // Normalize risk score
     analysis.riskScore = Math.min(100, analysis.riskScore);
     
-    // If no suspicions were found but the URL has risky characteristics
-    if (!analysis.suspicious && !analysis.securityFeatures.https) {
-      analysis.suspicious = true; // Mark as suspicious anyway if not using HTTPS
+    // If it's a legitimate domain, ensure the score stays reasonable
+    if (isLegitimate) {
+      analysis.riskScore = Math.min(analysis.riskScore, 40); // Cap at 40% for legitimate domains
+      
+      // If score is low or the only issue is HTTP, don't mark as suspicious
+      if (analysis.riskScore < 20 || (analysis.reasons.length === 1 && analysis.reasons[0].includes('HTTP'))) {
+        analysis.suspicious = false;
+      }
+    } else {
+      // If no suspicions were found but the URL has risky characteristics
+      if (!analysis.suspicious && !analysis.securityFeatures.https) {
+        analysis.suspicious = true; // Mark as suspicious anyway if not using HTTPS
+      }
     }
     
   } catch (e) {
