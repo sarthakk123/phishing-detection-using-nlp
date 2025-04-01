@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Search, AlertTriangle, RotateCw } from 'lucide-react';
@@ -7,10 +7,21 @@ import { analyzeText, AnalysisResult } from '@/lib/phishingDetection';
 import ResultsDisplay from './ResultsDisplay';
 import { toast } from '@/components/ui/use-toast';
 
-const PhishingAnalyzer: React.FC = () => {
-  const [inputText, setInputText] = useState('');
+interface PhishingAnalyzerProps {
+  initialText?: string;
+}
+
+const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' }) => {
+  const [inputText, setInputText] = useState(initialText);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [results, setResults] = useState<AnalysisResult | null>(null);
+
+  // Update inputText when initialText prop changes
+  useEffect(() => {
+    setInputText(initialText);
+    // Clear previous results when input changes
+    setResults(null);
+  }, [initialText]);
 
   const handleAnalyze = () => {
     if (!inputText.trim()) {
