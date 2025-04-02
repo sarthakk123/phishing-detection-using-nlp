@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,32 +19,29 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
   const [results, setResults] = useState<AnalysisResult | null>(null);
   const [showResults, setShowResults] = useState(false);
   const [aiModeEnabled, setAiModeEnabled] = useState(() => {
-    // Initialize from localStorage
     try {
       return localStorage.getItem('phishDetectAiMode') === 'true';
     } catch (e) {
-      return true; // Default to enabled
+      return true;
     }
   });
+  const [toastShown, setToastShown] = useState(false);
 
-  // Initialize the learning system on component mount
   useEffect(() => {
     initializeLearningSystem();
   }, []);
 
-  // Update inputText when initialText prop changes
   useEffect(() => {
     setInputText(initialText);
-    // Clear previous results when input changes
     setResults(null);
     setShowResults(false);
+    setToastShown(false);
   }, [initialText]);
 
   const toggleAiMode = () => {
     const newMode = !aiModeEnabled;
     setAiModeEnabled(newMode);
     
-    // Save to localStorage
     localStorage.setItem('phishDetectAiMode', newMode.toString());
     
     toast({
@@ -66,7 +62,6 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
       return;
     }
 
-    // Normalize URL if it appears to be a URL
     let textToAnalyze = inputText;
     if (inputText.includes('.com') || inputText.includes('.org') || inputText.includes('.net') || 
         inputText.includes('http:') || inputText.includes('https:') || inputText.includes('www.')) {
@@ -75,37 +70,37 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
 
     setIsAnalyzing(true);
     setShowResults(false);
+    setToastShown(false);
     
     try {
       let analysisResults: AnalysisResult;
       
       if (aiModeEnabled) {
-        // Use the enhanced AI-powered analysis
         analysisResults = await enhancedAnalyzeText(textToAnalyze);
       } else {
-        // Use the original analysis without AI enhancements
-        // Since we're not actually changing the original analyzeText function,
-        // we'll just use the enhanced one but with a comment to indicate the difference
         analysisResults = await enhancedAnalyzeText(textToAnalyze);
       }
       
       setResults(analysisResults);
       
-      // Animation timing - show results after a brief delay
       setTimeout(() => setShowResults(true), 100);
       
-      if (analysisResults.threatLevel === 'high') {
-        toast({
-          title: "High Threat Detected!",
-          description: "This message contains multiple indicators of a phishing attempt.",
-          variant: "destructive"
-        });
-      } else if (analysisResults.threatLevel === 'medium') {
-        toast({
-          title: "Potential Threat Detected",
-          description: "This message contains some suspicious patterns. Exercise caution.",
-          variant: "default"
-        });
+      if (!toastShown) {
+        if (analysisResults.threatLevel === 'high') {
+          toast({
+            title: "High Threat Detected!",
+            description: "This message contains multiple indicators of a phishing attempt.",
+            variant: "destructive"
+          });
+          setToastShown(true);
+        } else if (analysisResults.threatLevel === 'medium') {
+          toast({
+            title: "Potential Threat Detected",
+            description: "This message contains some suspicious patterns. Exercise caution.",
+            variant: "default"
+          });
+          setToastShown(true);
+        }
       }
     } catch (error) {
       console.error('Analysis error:', error);
@@ -123,14 +118,15 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
     setInputText('');
     setResults(null);
     setShowResults(false);
+    setToastShown(false);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputText(e.target.value);
-    // Clear previous results when input changes
     if (results) {
       setResults(null);
       setShowResults(false);
+      setToastShown(false);
     }
   };
 
