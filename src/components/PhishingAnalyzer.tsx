@@ -8,7 +8,7 @@ import { enhancedAnalyzeText } from '@/lib/enhancedPhishingDetection';
 import { initializeLearningSystem } from '@/lib/selfLearning';
 import ResultsDisplay from './ResultsDisplay';
 import FeedbackForm from './FeedbackForm';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 interface PhishingAnalyzerProps {
   initialText?: string;
@@ -28,6 +28,7 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
   });
   const [toastShown, setToastShown] = useState(false);
   const toastIdRef = useRef<string | null>(null);
+  const { toast, dismiss } = useToast(); // Get dismiss function from useToast hook
 
   useEffect(() => {
     initializeLearningSystem();
@@ -41,10 +42,10 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
     
     // Clear any existing toasts when input changes
     if (toastIdRef.current) {
-      toast.dismiss(toastIdRef.current);
+      dismiss(toastIdRef.current);
       toastIdRef.current = null;
     }
-  }, [initialText]);
+  }, [initialText, dismiss]);
 
   const toggleAiMode = () => {
     const newMode = !aiModeEnabled;
@@ -63,7 +64,7 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
   const handleAnalyze = async () => {
     // Dismiss any existing toasts
     if (toastIdRef.current) {
-      toast.dismiss(toastIdRef.current);
+      dismiss(toastIdRef.current);
       toastIdRef.current = null;
     }
 
@@ -138,7 +139,7 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
     
     // Dismiss any existing toasts
     if (toastIdRef.current) {
-      toast.dismiss(toastIdRef.current);
+      dismiss(toastIdRef.current);
       toastIdRef.current = null;
     }
   };
@@ -152,7 +153,7 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
       
       // Dismiss any existing toasts when input changes
       if (toastIdRef.current) {
-        toast.dismiss(toastIdRef.current);
+        dismiss(toastIdRef.current);
         toastIdRef.current = null;
       }
     }
