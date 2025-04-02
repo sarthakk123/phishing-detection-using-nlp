@@ -27,8 +27,7 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
     }
   });
   const [toastShown, setToastShown] = useState(false);
-  const toastIdRef = useRef<string | null>(null);
-  const { toast, dismiss } = useToast();
+  const { toast } = useToast();
 
   useEffect(() => {
     initializeLearningSystem();
@@ -36,19 +35,13 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
 
   useEffect(() => {
     // Only set input text from initialText on component mount or when initialText changes
-    if (initialText !== inputText) {
+    if (initialText) {
       setInputText(initialText);
       setResults(null);
       setShowResults(false);
       setToastShown(false);
-      
-      // Clear any existing toasts when input changes
-      if (toastIdRef.current) {
-        dismiss(toastIdRef.current);
-        toastIdRef.current = null;
-      }
     }
-  }, [initialText, dismiss, inputText]);
+  }, [initialText]);
 
   const toggleAiMode = () => {
     const newMode = !aiModeEnabled;
@@ -65,12 +58,6 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
   };
 
   const handleAnalyze = async () => {
-    // Dismiss any existing toasts
-    if (toastIdRef.current) {
-      dismiss(toastIdRef.current);
-      toastIdRef.current = null;
-    }
-
     if (!inputText.trim()) {
       toast({
         title: "Empty Input",
@@ -105,20 +92,18 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
       
       if (!toastShown) {
         if (analysisResults.threatLevel === 'high') {
-          const { id } = toast({
+          toast({
             title: "High Threat Detected!",
             description: "This message contains multiple indicators of a phishing attempt.",
             variant: "destructive"
           });
-          toastIdRef.current = id;
           setToastShown(true);
         } else if (analysisResults.threatLevel === 'medium') {
-          const { id } = toast({
+          toast({
             title: "Potential Threat Detected",
             description: "This message contains some suspicious patterns. Exercise caution.",
             variant: "default"
           });
-          toastIdRef.current = id;
           setToastShown(true);
         }
       }
@@ -139,12 +124,6 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
     setResults(null);
     setShowResults(false);
     setToastShown(false);
-    
-    // Dismiss any existing toasts
-    if (toastIdRef.current) {
-      dismiss(toastIdRef.current);
-      toastIdRef.current = null;
-    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -153,12 +132,6 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
       setResults(null);
       setShowResults(false);
       setToastShown(false);
-      
-      // Dismiss any existing toasts when input changes
-      if (toastIdRef.current) {
-        dismiss(toastIdRef.current);
-        toastIdRef.current = null;
-      }
     }
   };
 
