@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Search, AlertTriangle, RotateCw, Bot } from 'lucide-react';
@@ -26,6 +27,7 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
     }
   });
   const [toastShown, setToastShown] = useState(false);
+  const toastIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     initializeLearningSystem();
@@ -36,6 +38,12 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
     setResults(null);
     setShowResults(false);
     setToastShown(false);
+    
+    // Clear any existing toasts when input changes
+    if (toastIdRef.current) {
+      toast.dismiss(toastIdRef.current);
+      toastIdRef.current = null;
+    }
   }, [initialText]);
 
   const toggleAiMode = () => {
@@ -53,6 +61,12 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
   };
 
   const handleAnalyze = async () => {
+    // Dismiss any existing toasts
+    if (toastIdRef.current) {
+      toast.dismiss(toastIdRef.current);
+      toastIdRef.current = null;
+    }
+
     if (!inputText.trim()) {
       toast({
         title: "Empty Input",
@@ -87,18 +101,20 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
       
       if (!toastShown) {
         if (analysisResults.threatLevel === 'high') {
-          toast({
+          const { id } = toast({
             title: "High Threat Detected!",
             description: "This message contains multiple indicators of a phishing attempt.",
             variant: "destructive"
           });
+          toastIdRef.current = id;
           setToastShown(true);
         } else if (analysisResults.threatLevel === 'medium') {
-          toast({
+          const { id } = toast({
             title: "Potential Threat Detected",
             description: "This message contains some suspicious patterns. Exercise caution.",
             variant: "default"
           });
+          toastIdRef.current = id;
           setToastShown(true);
         }
       }
@@ -119,6 +135,12 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
     setResults(null);
     setShowResults(false);
     setToastShown(false);
+    
+    // Dismiss any existing toasts
+    if (toastIdRef.current) {
+      toast.dismiss(toastIdRef.current);
+      toastIdRef.current = null;
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -127,6 +149,12 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
       setResults(null);
       setShowResults(false);
       setToastShown(false);
+      
+      // Dismiss any existing toasts when input changes
+      if (toastIdRef.current) {
+        toast.dismiss(toastIdRef.current);
+        toastIdRef.current = null;
+      }
     }
   };
 
