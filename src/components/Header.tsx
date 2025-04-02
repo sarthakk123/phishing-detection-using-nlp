@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Shield, ShieldAlert, Robot, BarChart } from 'lucide-react';
+import { Shield, ShieldAlert, Bot, BarChart } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const Header: React.FC = () => {
@@ -52,7 +52,7 @@ const Header: React.FC = () => {
                 <div className="flex items-center gap-2 text-sm">
                   {aiModeEnabled ? (
                     <>
-                      <Robot className="h-4 w-4 text-primary animate-pulse" />
+                      <Bot className="h-4 w-4 text-primary animate-pulse" />
                       <span className="text-primary/90">Self-Learning AI</span>
                     </>
                   ) : (

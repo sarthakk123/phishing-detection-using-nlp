@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, AlertTriangle, RotateCw, Robot } from 'lucide-react';
+import { Search, AlertTriangle, RotateCw, Bot } from 'lucide-react';
 import { AnalysisResult, normalizeUrl } from '@/lib/phishingDetection';
 import { enhancedAnalyzeText } from '@/lib/enhancedPhishingDetection';
 import { initializeLearningSystem } from '@/lib/selfLearning';
@@ -153,7 +153,7 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
           className={`flex items-center gap-1.5 ${aiModeEnabled ? 'bg-primary/10' : ''}`}
           onClick={toggleAiMode}
         >
-          <Robot className={`h-3.5 w-3.5 ${aiModeEnabled ? 'text-primary' : 'text-muted-foreground'}`} />
+          <Bot className={`h-3.5 w-3.5 ${aiModeEnabled ? 'text-primary' : 'text-muted-foreground'}`} />
           <span className="text-xs">AI Mode</span>
         </Button>
       </div>

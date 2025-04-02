@@ -58,7 +58,7 @@
   }
 }
 
-button:has(.text-primary[data-lucide="Robot"]) {
+button:has(.text-primary[data-lucide="Bot"]) {
   animation: pulse-ai 2s infinite;
 }
 
