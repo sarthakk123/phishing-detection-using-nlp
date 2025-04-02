@@ -28,24 +28,27 @@ const PhishingAnalyzer: React.FC<PhishingAnalyzerProps> = ({ initialText = '' })
   });
   const [toastShown, setToastShown] = useState(false);
   const toastIdRef = useRef<string | null>(null);
-  const { toast, dismiss } = useToast(); // Get dismiss function from useToast hook
+  const { toast, dismiss } = useToast();
 
   useEffect(() => {
     initializeLearningSystem();
   }, []);
 
   useEffect(() => {
-    setInputText(initialText);
-    setResults(null);
-    setShowResults(false);
-    setToastShown(false);
-    
-    // Clear any existing toasts when input changes
-    if (toastIdRef.current) {
-      dismiss(toastIdRef.current);
-      toastIdRef.current = null;
+    // Only set input text from initialText on component mount or when initialText changes
+    if (initialText !== inputText) {
+      setInputText(initialText);
+      setResults(null);
+      setShowResults(false);
+      setToastShown(false);
+      
+      // Clear any existing toasts when input changes
+      if (toastIdRef.current) {
+        dismiss(toastIdRef.current);
+        toastIdRef.current = null;
+      }
     }
-  }, [initialText, dismiss]);
+  }, [initialText, dismiss, inputText]);
 
   const toggleAiMode = () => {
     const newMode = !aiModeEnabled;
