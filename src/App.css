@@ -44,3 +44,66 @@
 .read-the-docs {
   color: hsl(var(--muted-foreground));
 }
+
+/* AI Mode Button Animation */
+@keyframes pulse-ai {
+  0% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 5px rgba(99, 102, 241, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+  }
+}
+
+button:has(.text-primary[data-lucide="Robot"]) {
+  animation: pulse-ai 2s infinite;
+}
+
+/* Enhanced feedback styles */
+.feedback-option {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.feedback-option:hover::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.1), transparent);
+  animation: shimmer 2s linear infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Enhanced results display animations */
+.results-box-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.results-box-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 400ms, transform 400ms;
+}
+
+.results-box-exit {
+  opacity: 1;
+}
+
+.results-box-exit-active {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 300ms, transform 300ms;
+}
